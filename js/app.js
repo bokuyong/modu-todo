@@ -207,9 +207,15 @@
 
     // 동기화 상태
     const s = Store.data.settings;
-    $('syncStatus').textContent = s.gConnected
-      ? (s.lastSync ? '🔄 ' + new Date(s.lastSync).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '🔄 연결됨')
-      : '';
+    if (Sync.isConnected()) {
+      $('syncStatus').textContent = s.lastGistSync
+        ? '🔁 ' + new Date(s.lastGistSync).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+        : '🔁 연결됨';
+    } else if (s.gConnected) {
+      $('syncStatus').textContent = s.lastSync ? '🔄 ' + new Date(s.lastSync).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '🔄 연결됨';
+    } else {
+      $('syncStatus').textContent = '';
+    }
   }
 
   // ---- 뷰 전환 ----
@@ -441,9 +447,63 @@
   $('settingsBtn').addEventListener('click', () => {
     $('gClientId').value = Store.data.settings.gClientId;
     $('gApiKey').value = Store.data.settings.gApiKey;
+    $('ghToken').value = Store.data.settings.ghToken;
     updateGcalUI();
+    updateGhUI();
     $('settingsModal').classList.remove('hidden');
   });
+
+  // ---- GitHub Gist 멀티기기 동기화 ----
+  function updateGhUI() {
+    const connected = Sync.isConnected();
+    $('ghConnectBtn').classList.toggle('hidden', connected);
+    $('ghSyncBtn').classList.toggle('hidden', !connected);
+    $('ghDisconnectBtn').classList.toggle('hidden', !connected);
+    if (connected && !$('ghStatus').textContent) $('ghStatus').textContent = '✅ 자동 동기화가 켜져 있습니다.';
+  }
+
+  $('ghConnectBtn').addEventListener('click', async () => {
+    const token = $('ghToken').value.trim();
+    if (!token) { $('ghStatus').textContent = '토큰을 입력하세요'; return; }
+    $('ghStatus').textContent = '연결 중…';
+    try {
+      const login = await Sync.connect(token);
+      $('ghStatus').textContent = `✅ ${login} 계정에 연결됐습니다. 이제 모든 기기가 자동 동기화됩니다.`;
+      updateGhUI();
+      refresh();
+    } catch (err) {
+      $('ghStatus').textContent = '❌ 연결 실패: ' + err.message;
+    }
+  });
+  $('ghSyncBtn').addEventListener('click', async () => {
+    $('ghStatus').textContent = '동기화 중…';
+    try {
+      await Sync.sync();
+      refresh();
+      $('ghStatus').textContent = '✅ 동기화 완료';
+    } catch (err) {
+      $('ghStatus').textContent = '❌ 동기화 실패: ' + err.message;
+    }
+  });
+  $('ghDisconnectBtn').addEventListener('click', () => {
+    Sync.disconnect();
+    $('ghToken').value = '';
+    $('ghStatus').textContent = '';
+    updateGhUI();
+    refresh();
+    toast('동기화 연결을 해제했습니다 (데이터는 이 기기에 유지)');
+  });
+
+  // 동기화 완료/실패 시 UI 갱신
+  Sync.setStatusListener((state, msg) => {
+    if (state === 'ok') refresh();
+    if (state === 'syncing') $('syncStatus').textContent = '🔁 동기화 중…';
+    if (state === 'error') $('syncStatus').textContent = '🔁 ⚠️';
+  });
+
+  // 앱 시작 시 + 창에 다시 돌아왔을 때 자동 동기화
+  if (Sync.isConnected()) Sync.sync().catch(() => {});
+  window.addEventListener('focus', () => { if (Sync.isConnected()) Sync.schedule(); });
 
   function updateGcalUI() {
     const connected = Store.data.settings.gConnected;

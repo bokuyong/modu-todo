@@ -3,14 +3,18 @@ const Store = (() => {
   const KEY = 'modu-todo-v1';
 
   const defaults = () => ({
-    tasks: [],          // {id,title,notes,date,time,priority,repeat,project,tags,done,subtasks,createdAt,completedAt,gcalId}
-    projects: [],       // {id,name,color}
+    tasks: [],          // {id,title,notes,date,time,priority,repeat,project,tags,done,subtasks,createdAt,updatedAt,completedAt,gcalId}
+    projects: [],       // {id,name,color,updatedAt}
+    deleted: {},        // 삭제 기록(tombstone) {id: 삭제시각ISO} — 기기 간 동기화 시 삭제 전파용
     settings: {
       theme: 'light',
       gClientId: '',
       gApiKey: '',
       gConnected: false,
       lastSync: null,
+      ghToken: '',
+      gistId: '',
+      lastGistSync: null,
     },
     gcalEvents: [],     // 구글 캘린더에서 가져온 읽기전용 이벤트 캐시 {id,title,date,time,endTime}
   });
@@ -27,16 +31,19 @@ const Store = (() => {
 
   function save() {
     localStorage.setItem(KEY, JSON.stringify(data));
+    // 데이터가 바뀌면 자동 동기화 예약 (동기화 적용 중 재귀 방지)
+    if (typeof Sync !== 'undefined' && !Sync.isApplying()) Sync.schedule();
   }
 
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
   /* ---- 할 일 ---- */
   function addTask(t) {
+    const now = new Date().toISOString();
     const task = Object.assign({
       id: uid(), title: '', notes: '', date: '', time: '',
       priority: 0, repeat: '', project: '', tags: [],
-      done: false, subtasks: [], createdAt: new Date().toISOString(),
+      done: false, subtasks: [], createdAt: now, updatedAt: now,
       completedAt: null, gcalId: null,
     }, t);
     data.tasks.push(task);
@@ -47,7 +54,7 @@ const Store = (() => {
   function updateTask(id, patch) {
     const t = data.tasks.find(x => x.id === id);
     if (!t) return null;
-    Object.assign(t, patch);
+    Object.assign(t, patch, { updatedAt: new Date().toISOString() });
     save();
     return t;
   }
@@ -56,6 +63,7 @@ const Store = (() => {
     const idx = data.tasks.findIndex(x => x.id === id);
     if (idx >= 0) {
       const [removed] = data.tasks.splice(idx, 1);
+      data.deleted[id] = new Date().toISOString();
       save();
       return removed;
     }
@@ -63,6 +71,8 @@ const Store = (() => {
   }
 
   function restoreTask(task) {
+    delete data.deleted[task.id];
+    task.updatedAt = new Date().toISOString();
     data.tasks.push(task);
     save();
   }
@@ -72,7 +82,8 @@ const Store = (() => {
     const t = data.tasks.find(x => x.id === id);
     if (!t) return;
     t.done = !t.done;
-    t.completedAt = t.done ? new Date().toISOString() : null;
+    t.updatedAt = new Date().toISOString();
+    t.completedAt = t.done ? t.updatedAt : null;
     if (t.done && t.repeat && t.date) {
       const next = nextOccurrence(t.date, t.repeat);
       addTask({
@@ -98,13 +109,14 @@ const Store = (() => {
   /* ---- 프로젝트 ---- */
   const PALETTE = ['#4f6ef7', '#e5484d', '#2eb872', '#f0a020', '#9b59d0', '#16a8a8', '#e06aa3'];
   function addProject(name) {
-    const p = { id: uid(), name, color: PALETTE[data.projects.length % PALETTE.length] };
+    const p = { id: uid(), name, color: PALETTE[data.projects.length % PALETTE.length], updatedAt: new Date().toISOString() };
     data.projects.push(p);
     save();
     return p;
   }
   function deleteProject(id) {
     data.projects = data.projects.filter(p => p.id !== id);
+    data.deleted[id] = new Date().toISOString();
     data.tasks.forEach(t => { if (t.project === id) t.project = ''; });
     save();
   }
@@ -137,11 +149,19 @@ const Store = (() => {
     save();
   }
 
+  /* 동기화 결과(병합된 tasks/projects/deleted)를 통째로 적용 */
+  function applySync(merged) {
+    data.tasks = merged.tasks;
+    data.projects = merged.projects;
+    data.deleted = merged.deleted;
+    save();
+  }
+
   return {
     load, save, get data() { return data; },
     addTask, updateTask, deleteTask, restoreTask, toggleDone,
     addProject, deleteProject,
     fmtDate, todayStr, allTags, uid,
-    exportJSON, importJSON, wipe,
+    exportJSON, importJSON, wipe, applySync,
   };
 })();

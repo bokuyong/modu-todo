@@ -1,8 +1,9 @@
 /* sw.js — 오프라인 지원 서비스 워커 */
-const CACHE = 'modu-todo-v1';
+const CACHE = 'modu-todo-v2';
 const ASSETS = [
   './index.html',
   './css/style.css',
+  './js/sync.js',
   './js/store.js',
   './js/nlp.js',
   './js/ics.js',

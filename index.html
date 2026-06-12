@@ -150,6 +150,17 @@
         <input id="importJsonFile" type="file" accept=".json" class="hidden">
       </div>
 
+      <h3>🔁 여러 기기 자동 동기화 (GitHub)</h3>
+      <p class="hint">본인 GitHub 계정의 <b>비공개 Gist</b>에 데이터를 저장해 안드로이드·맥·윈도우 모든 기기에서 자동으로 합쳐집니다. 변경 후 4초 뒤 자동 저장, 앱을 열 때마다 자동으로 받아옵니다.<br>
+      토큰 만들기: <a href="https://github.com/settings/tokens/new?scopes=gist&description=modu-todo-sync" target="_blank">github.com/settings/tokens/new</a> 에서 <b>gist 권한만</b> 체크하고 생성한 토큰을 모든 기기에 한 번씩 입력하세요.</p>
+      <label>GitHub 토큰 (gist 권한)<input id="ghToken" type="password" placeholder="ghp_..."></label>
+      <div class="btn-row">
+        <button id="ghConnectBtn" class="primary-btn">동기화 연결</button>
+        <button id="ghSyncBtn" class="text-btn hidden">지금 동기화</button>
+        <button id="ghDisconnectBtn" class="danger-btn hidden">연결 해제</button>
+      </div>
+      <p id="ghStatus" class="hint"></p>
+
       <h3>🗓️ 캘린더 연동 (ICS — 모든 캘린더 호환)</h3>
       <p class="hint">ICS 파일은 구글 캘린더, 애플 캘린더, 아웃룩, 네이버 캘린더 등 모든 캘린더 앱에서 열 수 있는 표준 형식입니다.</p>
       <div class="btn-row">
@@ -179,6 +190,7 @@
 
 <div id="toast" class="hidden"></div>
 
+<script src="js/sync.js"></script>
 <script src="js/store.js"></script>
 <script src="js/nlp.js"></script>
 <script src="js/ics.js"></script>
