@@ -1,0 +1,51 @@
+{
+  "name": "modu-todo",
+  "productName": "ModuTodo",
+  "version": "1.0.0",
+  "description": "모든 기기에서 동작하는 오프라인 우선 투두리스트 & 캘린더",
+  "main": "electron-main.js",
+  "author": "bokuyong",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "dist:mac": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.bokuyong.modutodo",
+    "files": [
+      "electron-main.js",
+      "index.html",
+      "css/**",
+      "js/**",
+      "manifest.webmanifest",
+      "sw.js",
+      "icon.svg",
+      "icon-512.png"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon-512.png",
+      "artifactName": "ModuTodo-Setup-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "shortcutName": "모두의 할 일",
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "icon-512.png",
+      "category": "public.app-category.productivity",
+      "artifactName": "ModuTodo-${version}.dmg"
+    }
+  }
+}
