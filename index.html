@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#4f6ef7">
+<title>모두의 할 일 — 투두 & 캘린더</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- 사이드바 -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <span class="logo">✓ 모두의 할 일</span>
+      <button id="sidebarClose" class="icon-btn" title="닫기">✕</button>
+    </div>
+    <nav id="nav">
+      <button class="nav-item active" data-view="today">📅 오늘 <span class="count" id="countToday"></span></button>
+      <button class="nav-item" data-view="upcoming">🗓️ 예정 <span class="count" id="countUpcoming"></span></button>
+      <button class="nav-item" data-view="all">📋 전체 <span class="count" id="countAll"></span></button>
+      <button class="nav-item" data-view="calendar">🗂️ 캘린더</button>
+      <button class="nav-item" data-view="done">✅ 완료됨</button>
+    </nav>
+    <div class="sidebar-section">
+      <div class="section-title">프로젝트 <button id="addProjectBtn" class="icon-btn" title="프로젝트 추가">＋</button></div>
+      <div id="projectList"></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="section-title">태그</div>
+      <div id="tagList"></div>
+    </div>
+    <div class="sidebar-footer">
+      <button id="settingsBtn" class="nav-item">⚙️ 설정 · 연동</button>
+      <button id="themeBtn" class="nav-item">🌙 다크 모드</button>
+    </div>
+  </aside>
+
+  <!-- 메인 -->
+  <main id="main">
+    <header id="topbar">
+      <button id="menuBtn" class="icon-btn" title="메뉴">☰</button>
+      <h1 id="viewTitle">오늘</h1>
+      <div class="topbar-right">
+        <span id="syncStatus" class="sync-status" title="동기화 상태"></span>
+        <button id="searchBtn" class="icon-btn" title="검색">🔍</button>
+      </div>
+    </header>
+
+    <div id="searchBar" class="hidden">
+      <input id="searchInput" type="search" placeholder="검색어 입력…">
+    </div>
+
+    <!-- 빠른 추가 -->
+    <div id="quickAdd">
+      <input id="quickInput" type="text"
+        placeholder="할 일 입력 — 예: 내일 3시 회의 #업무 !높음 매주" autocomplete="off">
+      <button id="quickAddBtn">추가</button>
+    </div>
+    <div id="quickHint" class="hidden"></div>
+
+    <!-- 리스트 뷰 -->
+    <section id="listView"></section>
+
+    <!-- 캘린더 뷰 -->
+    <section id="calendarView" class="hidden">
+      <div class="cal-toolbar">
+        <button id="calPrev" class="icon-btn">‹</button>
+        <span id="calTitle"></span>
+        <button id="calNext" class="icon-btn">›</button>
+        <button id="calToday" class="text-btn">오늘</button>
+        <div class="cal-mode">
+          <button id="calMonthBtn" class="text-btn active">월</button>
+          <button id="calWeekBtn" class="text-btn">주</button>
+        </div>
+      </div>
+      <div id="calGrid"></div>
+    </section>
+  </main>
+</div>
+
+<!-- 할 일 편집 모달 -->
+<div id="taskModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="taskModalTitle">할 일 편집</h2>
+      <button class="icon-btn modal-close">✕</button>
+    </div>
+    <form id="taskForm">
+      <input type="hidden" id="fId">
+      <label>제목<input id="fTitle" type="text" required></label>
+      <label>메모<textarea id="fNotes" rows="2"></textarea></label>
+      <div class="form-row">
+        <label>날짜<input id="fDate" type="date"></label>
+        <label>시간<input id="fTime" type="time"></label>
+      </div>
+      <div class="form-row">
+        <label>우선순위
+          <select id="fPriority">
+            <option value="0">없음</option>
+            <option value="3">🔴 높음</option>
+            <option value="2">🟡 보통</option>
+            <option value="1">🔵 낮음</option>
+          </select>
+        </label>
+        <label>반복
+          <select id="fRepeat">
+            <option value="">안 함</option>
+            <option value="daily">매일</option>
+            <option value="weekly">매주</option>
+            <option value="monthly">매월</option>
+            <option value="yearly">매년</option>
+          </select>
+        </label>
+      </div>
+      <div class="form-row">
+        <label>프로젝트<select id="fProject"><option value="">없음</option></select></label>
+        <label>태그 (쉼표 구분)<input id="fTags" type="text" placeholder="업무, 개인"></label>
+      </div>
+      <div id="subtaskArea">
+        <div class="section-title">하위 할 일 <button type="button" id="addSubtaskBtn" class="icon-btn">＋</button></div>
+        <div id="subtaskList"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="deleteTaskBtn" class="danger-btn">삭제</button>
+        <button type="submit" class="primary-btn">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 설정 모달 -->
+<div id="settingsModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>설정 · 캘린더 연동</h2>
+      <button class="icon-btn modal-close">✕</button>
+    </div>
+    <div class="settings-body">
+
+      <h3>📤 데이터 내보내기 / 가져오기</h3>
+      <p class="hint">데이터는 전부 이 기기에 저장됩니다. 백업하거나 다른 기기로 옮길 때 사용하세요.</p>
+      <div class="btn-row">
+        <button id="exportJsonBtn" class="text-btn">JSON 백업</button>
+        <button id="importJsonBtn" class="text-btn">JSON 복원</button>
+        <input id="importJsonFile" type="file" accept=".json" class="hidden">
+      </div>
+
+      <h3>🗓️ 캘린더 연동 (ICS — 모든 캘린더 호환)</h3>
+      <p class="hint">ICS 파일은 구글 캘린더, 애플 캘린더, 아웃룩, 네이버 캘린더 등 모든 캘린더 앱에서 열 수 있는 표준 형식입니다.</p>
+      <div class="btn-row">
+        <button id="exportIcsBtn" class="text-btn">ICS로 내보내기</button>
+        <button id="importIcsBtn" class="text-btn">ICS 가져오기</button>
+        <input id="importIcsFile" type="file" accept=".ics" class="hidden">
+      </div>
+
+      <h3>🔄 구글 캘린더 실시간 동기화</h3>
+      <p class="hint">구글 클라우드 콘솔에서 발급받은 OAuth 클라이언트 ID와 API 키를 입력하면 구글 캘린더와 양방향 동기화가 활성화됩니다. (README의 안내 참고)</p>
+      <label>OAuth 클라이언트 ID<input id="gClientId" type="text" placeholder="xxxx.apps.googleusercontent.com"></label>
+      <label>API 키<input id="gApiKey" type="text" placeholder="AIza..."></label>
+      <div class="btn-row">
+        <button id="gConnectBtn" class="primary-btn">구글 캘린더 연결</button>
+        <button id="gSyncBtn" class="text-btn hidden">지금 동기화</button>
+        <button id="gDisconnectBtn" class="danger-btn hidden">연결 해제</button>
+      </div>
+      <p id="gStatus" class="hint"></p>
+
+      <h3>⚠️ 데이터 초기화</h3>
+      <div class="btn-row">
+        <button id="wipeBtn" class="danger-btn">모든 데이터 삭제</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="hidden"></div>
+
+<script src="js/store.js"></script>
+<script src="js/nlp.js"></script>
+<script src="js/ics.js"></script>
+<script src="js/calendar.js"></script>
+<script src="js/gcal.js"></script>
+<script src="js/app.js"></script>
+<script>
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+</body>
+</html>
